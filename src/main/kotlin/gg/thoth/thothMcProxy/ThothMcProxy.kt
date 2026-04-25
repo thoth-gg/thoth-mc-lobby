@@ -136,6 +136,7 @@ class ThothMcProxy @Inject constructor(
         val newAuthService = AuthService(
             repository = newRepository,
             roleStatusService = newRoleService,
+            bedrockLinkService = floodgateService,
             codeGenerator = AuthCodeGenerator(),
             clock = Clock.systemUTC(),
             config = newConfig,

@@ -3,6 +3,7 @@ package gg.thoth.thothMcProxy.floodgate
 import com.velocitypowered.api.proxy.Player
 import gg.thoth.thothMcProxy.model.Platform
 import gg.thoth.thothMcProxy.model.ResolvedLogin
+import gg.thoth.thothMcProxy.service.BedrockLinkService
 import java.util.UUID
 import java.util.concurrent.TimeUnit
 import org.geysermc.floodgate.api.FloodgateApi
@@ -10,7 +11,7 @@ import org.slf4j.Logger
 
 class FloodgateService(
     private val logger: Logger,
-) {
+) : BedrockLinkService {
     private data class LinkedJavaLookupResult(
         val linkedJavaUuid: UUID?,
         val lookupFailed: Boolean,
@@ -55,6 +56,21 @@ class FloodgateService(
             true
         }.onFailure { throwable ->
             logger.warn("Failed to unlink Floodgate account for {}", primaryJavaUuid, throwable)
+        }.getOrDefault(false)
+    }
+
+    override fun linkToJava(primaryJavaUuid: UUID, bedrockUuid: UUID, bedrockUsername: String): Boolean {
+        return runCatching {
+            api().playerLink.linkPlayer(primaryJavaUuid, bedrockUuid, bedrockUsername).get(10, TimeUnit.SECONDS)
+            true
+        }.onFailure { throwable ->
+            logger.warn(
+                "Failed to link Floodgate Bedrock account {} ({}) to Java UUID {}",
+                bedrockUsername,
+                bedrockUuid,
+                primaryJavaUuid,
+                throwable,
+            )
         }.getOrDefault(false)
     }
 

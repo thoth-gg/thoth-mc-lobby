@@ -250,7 +250,11 @@ class AuthRepository(
                                 status = AuthCompletionStatus.PRIMARY_BEDROCK_ALREADY_EXISTS,
                             )
                         }
-                        if (pending.linkedJavaUuid != null && currentIdentity?.primaryJavaUuid != pending.linkedJavaUuid) {
+                        if (
+                            pending.linkedJavaUuid != null &&
+                            currentIdentity?.primaryJavaUuid != null &&
+                            currentIdentity.primaryJavaUuid != pending.linkedJavaUuid
+                        ) {
                             return@withTransaction AuthCompletionResult(
                                 status = AuthCompletionStatus.LINKED_JAVA_MISMATCH,
                             )
@@ -350,6 +354,12 @@ class AuthRepository(
     fun findIdentityByPrimaryUuid(uuid: UUID): DiscordIdentityRecord? {
         return withConnection { connection ->
             findIdentityByPrimaryUuid(connection, uuid)
+        }
+    }
+
+    fun findPendingAuthentication(codeHash: String, now: Instant): PendingAuthCodeRecord? {
+        return withConnection { connection ->
+            findPendingCode(connection, codeHash, now)
         }
     }
 

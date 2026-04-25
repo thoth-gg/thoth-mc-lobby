@@ -11,10 +11,12 @@ import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
 import java.time.Clock
 import java.time.Instant
+import java.util.UUID
 
 class AuthService(
     private val repository: AuthRepository,
     private val roleStatusService: RoleStatusService,
+    private val bedrockLinkService: BedrockLinkService = BedrockLinkService { _, _, _ -> false },
     private val codeGenerator: AuthCodeGenerator,
     private val clock: Clock,
     private val config: PluginConfig,
@@ -41,10 +43,22 @@ class AuthService(
             return LoginDecision.deny(config.messages.discordUnavailable)
         }
 
-        if (login.platform == Platform.BEDROCK && login.linkedJavaUuid != null) {
+        if (login.platform == Platform.BEDROCK) {
             val identity = repository.findIdentity(account.ownerDiscordId)
-            if (identity?.primaryJavaUuid == null || identity.primaryJavaUuid != login.linkedJavaUuid) {
-                return LoginDecision.deny(config.messages.linkMismatch)
+            val primaryJavaUuid = identity?.primaryJavaUuid
+            if (primaryJavaUuid != null) {
+                if (login.linkedJavaUuid == null) {
+                    val linked = bedrockLinkService.linkToJava(
+                        primaryJavaUuid = primaryJavaUuid,
+                        bedrockUuid = login.playerUuid,
+                        bedrockUsername = login.username,
+                    )
+                    if (!linked) {
+                        return LoginDecision.deny(config.messages.linkMismatch)
+                    }
+                } else if (primaryJavaUuid != login.linkedJavaUuid) {
+                    return LoginDecision.deny(config.messages.linkMismatch)
+                }
             }
         }
 
@@ -58,9 +72,14 @@ class AuthService(
             return ReactionDecision.CODE_NOT_FOUND
         }
 
+        val codeHash = hashCode(normalizedCode)
+        if (!ensurePendingFloodgateLink(discordUserId, codeHash)) {
+            return ReactionDecision.LINK_MISMATCH
+        }
+
         val result = repository.completeAuthentication(
             discordUserId = discordUserId,
-            codeHash = hashCode(normalizedCode),
+            codeHash = codeHash,
             now = now(),
         )
 
@@ -102,6 +121,31 @@ class AuthService(
         return LoginDecision.deny(config.messages.discordUnavailable)
     }
 
+    private fun ensurePendingFloodgateLink(discordUserId: String, codeHash: String): Boolean {
+        val pending = repository.findPendingAuthentication(codeHash, now()) ?: return true
+        val identity = repository.findIdentity(discordUserId)
+        return when {
+            pending.platform == Platform.BEDROCK && pending.linkedJavaUuid == null && identity?.primaryJavaUuid != null -> {
+                bedrockLinkService.linkToJava(
+                    primaryJavaUuid = identity.primaryJavaUuid,
+                    bedrockUuid = pending.playerUuid,
+                    bedrockUsername = pending.lastUsername,
+                )
+            }
+
+            pending.platform == Platform.JAVA && identity?.primaryBedrockUuid != null -> {
+                val bedrockAccount = repository.findAccount(identity.primaryBedrockUuid) ?: return false
+                bedrockLinkService.linkToJava(
+                    primaryJavaUuid = pending.accountUuid,
+                    bedrockUuid = bedrockAccount.playerUuid,
+                    bedrockUsername = bedrockAccount.lastUsername,
+                )
+            }
+
+            else -> true
+        }
+    }
+
     private fun hashCode(code: String): String {
         return MessageDigest.getInstance("SHA-256")
             .digest(code.toByteArray(StandardCharsets.UTF_8))
@@ -120,4 +164,8 @@ interface RoleStatusService {
         discordUserId: String,
         roleIds: Collection<String>?,
     ): gg.thoth.thothMcProxy.model.RoleStatusSnapshot
+}
+
+fun interface BedrockLinkService {
+    fun linkToJava(primaryJavaUuid: UUID, bedrockUuid: UUID, bedrockUsername: String): Boolean
 }

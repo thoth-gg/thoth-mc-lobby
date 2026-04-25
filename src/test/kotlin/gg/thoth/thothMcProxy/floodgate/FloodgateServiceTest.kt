@@ -86,4 +86,22 @@ class FloodgateServiceTest {
 
         assertTrue(result)
     }
+
+    @Test
+    fun `linkToJava delegates to Floodgate player link`() {
+        val javaUuid = UUID.randomUUID()
+        val bedrockUuid = UUID.randomUUID()
+        val api = mockk<FloodgateApi>()
+        val playerLink = mockk<PlayerLink>()
+
+        mockkStatic(FloodgateApi::class)
+        every { FloodgateApi.getInstance() } returns api
+        every { api.playerLink } returns playerLink
+        every { playerLink.linkPlayer(javaUuid, bedrockUuid, "alice-bedrock") } returns CompletableFuture.completedFuture(null)
+
+        val result = FloodgateService(org.slf4j.helpers.NOPLogger.NOP_LOGGER)
+            .linkToJava(javaUuid, bedrockUuid, "alice-bedrock")
+
+        assertTrue(result)
+    }
 }

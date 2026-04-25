@@ -31,8 +31,26 @@ class AuthRepositoryTest {
 
         repository.replacePendingCode(java1, java1, Platform.JAVA, "java1", hash("JAVA01"), now, now.plusSeconds(600))
         repository.replacePendingCode(java2, java2, Platform.JAVA, "java2", hash("JAVA02"), now, now.plusSeconds(600))
-        repository.replacePendingCode(bedrock1, bedrockPlayer1, Platform.BEDROCK, "bedrock1", hash("BED001"), now, now.plusSeconds(600))
-        repository.replacePendingCode(bedrock2, bedrockPlayer2, Platform.BEDROCK, "bedrock2", hash("BED002"), now, now.plusSeconds(600))
+        repository.replacePendingCode(
+            bedrock1,
+            bedrockPlayer1,
+            Platform.BEDROCK,
+            "bedrock1",
+            hash("BED001"),
+            now,
+            now.plusSeconds(600),
+            java1,
+        )
+        repository.replacePendingCode(
+            bedrock2,
+            bedrockPlayer2,
+            Platform.BEDROCK,
+            "bedrock2",
+            hash("BED002"),
+            now,
+            now.plusSeconds(600),
+            java1,
+        )
 
         assertEquals(
             AuthCompletionStatus.SUCCESS,
@@ -84,7 +102,16 @@ class AuthRepositoryTest {
         val bedrockPlayerUuid = UUID.randomUUID()
 
         repository.replacePendingCode(javaUuid, javaUuid, Platform.JAVA, "alice", hash("JAVA01"), now, now.plusSeconds(600))
-        repository.replacePendingCode(bedrockUuid, bedrockPlayerUuid, Platform.BEDROCK, "alice-bedrock", hash("BED001"), now, now.plusSeconds(600))
+        repository.replacePendingCode(
+            bedrockUuid,
+            bedrockPlayerUuid,
+            Platform.BEDROCK,
+            "alice-bedrock",
+            hash("BED001"),
+            now,
+            now.plusSeconds(600),
+            javaUuid,
+        )
         repository.completeAuthentication("discord-1", hash("JAVA01"), now)
         repository.completeAuthentication("discord-1", hash("BED001"), now)
 

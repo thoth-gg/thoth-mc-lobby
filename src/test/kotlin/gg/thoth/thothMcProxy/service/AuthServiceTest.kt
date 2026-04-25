@@ -149,7 +149,7 @@ class AuthServiceTest {
         val primaryJava = UUID.randomUUID()
         val bedrock = UUID.randomUUID()
         seedAuthorizedAccount(repository, "discord-1", primaryJava, Platform.JAVA, "alice")
-        seedAuthorizedAccount(repository, "discord-1", bedrock, Platform.BEDROCK, "alice-bedrock")
+        seedAuthorizedAccount(repository, "discord-1", bedrock, Platform.BEDROCK, "alice-bedrock", primaryJava)
         val roleService = FakeRoleStatusService(
             loginSnapshot = RoleStatusSnapshot(false, RoleStatusSource.CACHE),
         )
@@ -175,7 +175,7 @@ class AuthServiceTest {
         val primaryJava = UUID.randomUUID()
         val bedrock = UUID.randomUUID()
         seedAuthorizedAccount(repository, "discord-1", primaryJava, Platform.JAVA, "alice")
-        seedAuthorizedAccount(repository, "discord-1", bedrock, Platform.BEDROCK, "alice-bedrock")
+        seedAuthorizedAccount(repository, "discord-1", bedrock, Platform.BEDROCK, "alice-bedrock", primaryJava)
         val original = requireNotNull(repository.findAccount(bedrock))
         val roleService = FakeRoleStatusService(
             loginSnapshot = RoleStatusSnapshot(false, RoleStatusSource.CACHE),
@@ -207,7 +207,7 @@ class AuthServiceTest {
         val primaryJava = UUID.randomUUID()
         val bedrock = UUID.randomUUID()
         seedAuthorizedAccount(repository, "discord-1", primaryJava, Platform.JAVA, "alice")
-        seedAuthorizedAccount(repository, "discord-1", bedrock, Platform.BEDROCK, "alice-bedrock")
+        seedAuthorizedAccount(repository, "discord-1", bedrock, Platform.BEDROCK, "alice-bedrock", primaryJava)
         val roleService = FakeRoleStatusService(
             loginSnapshot = RoleStatusSnapshot(false, RoleStatusSource.CACHE),
         )
@@ -227,12 +227,62 @@ class AuthServiceTest {
     }
 
     @Test
+    fun `evaluateLogin allows bedrock account without java primary`() {
+        val repository = repository()
+        val bedrock = UUID.randomUUID()
+        seedAuthorizedAccount(repository, "discord-1", bedrock, Platform.BEDROCK, "alice-bedrock")
+        val account = requireNotNull(repository.findAccount(bedrock))
+        val roleService = FakeRoleStatusService(
+            loginSnapshot = RoleStatusSnapshot(false, RoleStatusSource.CACHE),
+        )
+        val service = service(repository, roleService, mockk(relaxed = true))
+
+        val decision = service.evaluateLogin(
+            ResolvedLogin(
+                platform = Platform.BEDROCK,
+                accountUuid = bedrock,
+                playerUuid = account.playerUuid,
+                username = "alice-bedrock",
+            ),
+        )
+
+        assertTrue(decision.allowed)
+    }
+
+    @Test
+    fun `evaluateLogin links and allows unlinked bedrock account after java primary is registered`() {
+        val repository = repository()
+        val bedrock = UUID.randomUUID()
+        val primaryJava = UUID.randomUUID()
+        seedAuthorizedAccount(repository, "discord-1", bedrock, Platform.BEDROCK, "alice-bedrock")
+        seedAuthorizedAccount(repository, "discord-1", primaryJava, Platform.JAVA, "alice")
+        val account = requireNotNull(repository.findAccount(bedrock))
+        val linkService = FakeBedrockLinkService()
+        val roleService = FakeRoleStatusService(
+            loginSnapshot = RoleStatusSnapshot(false, RoleStatusSource.CACHE),
+        )
+        val service = service(repository, roleService, mockk(relaxed = true), linkService)
+
+        val decision = service.evaluateLogin(
+            ResolvedLogin(
+                platform = Platform.BEDROCK,
+                accountUuid = bedrock,
+                playerUuid = account.playerUuid,
+                username = "alice-bedrock",
+            ),
+        )
+
+        assertTrue(decision.allowed)
+        assertEquals(listOf(BedrockLink(primaryJava, account.playerUuid, "alice-bedrock")), linkService.links)
+    }
+
+    @Test
     fun `evaluateLogin denies bedrock account when Floodgate link lookup fails`() {
         val repository = repository()
         val primaryJava = UUID.randomUUID()
         val bedrock = UUID.randomUUID()
         seedAuthorizedAccount(repository, "discord-1", primaryJava, Platform.JAVA, "alice")
-        seedAuthorizedAccount(repository, "discord-1", bedrock, Platform.BEDROCK, "alice-bedrock")
+        seedAuthorizedAccount(repository, "discord-1", bedrock, Platform.BEDROCK, "alice-bedrock", primaryJava)
         val roleService = FakeRoleStatusService(
             loginSnapshot = RoleStatusSnapshot(false, RoleStatusSource.CACHE),
         )
@@ -271,6 +321,66 @@ class AuthServiceTest {
 
         assertFalse(decision.allowed)
         assertEquals(testConfig().messages.discordUnavailable, decision.message)
+        assertNull(repository.findAccount(bedrock))
+    }
+
+    @Test
+    fun `completeAuthentication links and allows new unlinked bedrock account when java primary exists`() {
+        val repository = repository()
+        val primaryJava = UUID.randomUUID()
+        val bedrock = UUID.randomUUID()
+        val bedrockPlayer = UUID.randomUUID()
+        seedAuthorizedAccount(repository, "discord-1", primaryJava, Platform.JAVA, "alice")
+        val linkService = FakeBedrockLinkService()
+        val roleService = FakeRoleStatusService()
+        val generator = mockk<AuthCodeGenerator>()
+        every { generator.generate(6) } returns "BED001"
+        val service = service(repository, roleService, generator, linkService)
+
+        val pending = service.evaluateLogin(
+            ResolvedLogin(
+                platform = Platform.BEDROCK,
+                accountUuid = bedrock,
+                playerUuid = bedrockPlayer,
+                username = "alice-bedrock",
+            ),
+        )
+        val result = service.completeAuthentication("discord-1", "BED001")
+
+        assertFalse(pending.allowed)
+        assertEquals(ReactionDecision.SUCCESS, result)
+        assertNotNull(repository.findAccount(bedrock))
+        assertEquals(listOf(BedrockLink(primaryJava, bedrockPlayer, "alice-bedrock")), linkService.links)
+    }
+
+    @Test
+    fun `completeAuthentication rejects new unlinked bedrock account when auto link fails`() {
+        val repository = repository()
+        val primaryJava = UUID.randomUUID()
+        val bedrock = UUID.randomUUID()
+        seedAuthorizedAccount(repository, "discord-1", primaryJava, Platform.JAVA, "alice")
+        val roleService = FakeRoleStatusService()
+        val generator = mockk<AuthCodeGenerator>()
+        every { generator.generate(6) } returns "BED001"
+        val service = service(
+            repository,
+            roleService,
+            generator,
+            FakeBedrockLinkService(linkResult = false),
+        )
+
+        val pending = service.evaluateLogin(
+            ResolvedLogin(
+                platform = Platform.BEDROCK,
+                accountUuid = bedrock,
+                playerUuid = UUID.randomUUID(),
+                username = "alice-bedrock",
+            ),
+        )
+        val result = service.completeAuthentication("discord-1", "BED001")
+
+        assertFalse(pending.allowed)
+        assertEquals(ReactionDecision.LINK_MISMATCH, result)
         assertNull(repository.findAccount(bedrock))
     }
 
@@ -332,19 +442,96 @@ class AuthServiceTest {
         assertNotNull(repository.findAccount(bedrock))
     }
 
+    @Test
+    fun `completeAuthentication links existing standalone bedrock when java is added`() {
+        val repository = repository()
+        val bedrock = UUID.randomUUID()
+        val primaryJava = UUID.randomUUID()
+        seedAuthorizedAccount(repository, "discord-1", bedrock, Platform.BEDROCK, "alice-bedrock")
+        val linkService = FakeBedrockLinkService()
+        val generator = mockk<AuthCodeGenerator>()
+        every { generator.generate(6) } returns "JAVA01"
+        val service = service(repository, FakeRoleStatusService(), generator, linkService)
+        val bedrockPlayerUuid = requireNotNull(repository.findAccount(bedrock)).playerUuid
+
+        val pending = service.evaluateLogin(
+            ResolvedLogin(
+                platform = Platform.JAVA,
+                accountUuid = primaryJava,
+                playerUuid = primaryJava,
+                username = "alice",
+            ),
+        )
+        val result = service.completeAuthentication("discord-1", "JAVA01")
+        val linkedBedrock = service.evaluateLogin(
+            ResolvedLogin(
+                platform = Platform.BEDROCK,
+                accountUuid = bedrock,
+                playerUuid = bedrockPlayerUuid,
+                username = "alice-bedrock",
+                linkedJavaUuid = primaryJava,
+            ),
+        )
+
+        assertFalse(pending.allowed)
+        assertEquals(ReactionDecision.SUCCESS, result)
+        assertTrue(linkedBedrock.allowed)
+        assertEquals(listOf(BedrockLink(primaryJava, bedrockPlayerUuid, "alice-bedrock")), linkService.links)
+    }
+
+    @Test
+    fun `completeAuthentication rejects java after standalone bedrock when auto link fails`() {
+        val repository = repository()
+        val bedrock = UUID.randomUUID()
+        val primaryJava = UUID.randomUUID()
+        seedAuthorizedAccount(repository, "discord-1", bedrock, Platform.BEDROCK, "alice-bedrock")
+        val generator = mockk<AuthCodeGenerator>()
+        every { generator.generate(6) } returns "JAVA01"
+        val service = service(
+            repository,
+            FakeRoleStatusService(),
+            generator,
+            FakeBedrockLinkService(linkResult = false),
+        )
+
+        val pending = service.evaluateLogin(
+            ResolvedLogin(
+                platform = Platform.JAVA,
+                accountUuid = primaryJava,
+                playerUuid = primaryJava,
+                username = "alice",
+            ),
+        )
+        val result = service.completeAuthentication("discord-1", "JAVA01")
+
+        assertFalse(pending.allowed)
+        assertEquals(ReactionDecision.LINK_MISMATCH, result)
+        assertNull(repository.findAccount(primaryJava))
+    }
+
     private fun seedAuthorizedAccount(
         repository: AuthRepository,
         discordUserId: String,
         accountUuid: UUID,
         platform: Platform,
         username: String,
+        linkedJavaUuid: UUID? = null,
     ) {
         val playerUuid = if (platform == Platform.JAVA) accountUuid else UUID.randomUUID()
         val code = when (platform) {
             Platform.JAVA -> "JAVA01"
             Platform.BEDROCK -> "BED001"
         }
-        repository.replacePendingCode(accountUuid, playerUuid, platform, username, hash(code), now, now.plusSeconds(600))
+        repository.replacePendingCode(
+            accountUuid,
+            playerUuid,
+            platform,
+            username,
+            hash(code),
+            now,
+            now.plusSeconds(600),
+            linkedJavaUuid,
+        )
         assertEquals(
             AuthCompletionStatus.SUCCESS,
             repository.completeAuthentication(discordUserId, hash(code), now).status,
@@ -359,10 +546,12 @@ class AuthServiceTest {
         repository: AuthRepository,
         roleService: RoleStatusService,
         generator: AuthCodeGenerator,
+        linkService: BedrockLinkService = FakeBedrockLinkService(),
     ): AuthService {
         return AuthService(
             repository = repository,
             roleStatusService = roleService,
+            bedrockLinkService = linkService,
             codeGenerator = generator,
             clock = clock,
             config = testConfig(),
@@ -373,6 +562,23 @@ class AuthServiceTest {
         return MessageDigest.getInstance("SHA-256")
             .digest(code.toByteArray(StandardCharsets.UTF_8))
             .joinToString("") { "%02x".format(it) }
+    }
+}
+
+private data class BedrockLink(
+    val primaryJavaUuid: UUID,
+    val bedrockUuid: UUID,
+    val bedrockUsername: String,
+)
+
+private class FakeBedrockLinkService(
+    private val linkResult: Boolean = true,
+) : BedrockLinkService {
+    val links = mutableListOf<BedrockLink>()
+
+    override fun linkToJava(primaryJavaUuid: UUID, bedrockUuid: UUID, bedrockUsername: String): Boolean {
+        links += BedrockLink(primaryJavaUuid, bedrockUuid, bedrockUsername)
+        return linkResult
     }
 }
 
