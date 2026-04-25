@@ -54,10 +54,10 @@ data class PluginConfig(
                     pendingAuth = root.optionalString("messages", "pendingAuth")
                         ?: """
                             <yellow>Thoth Minecraft Serverへようこそ！</yellow>
+
                             <white>まだ認証が完了していません。</white>
                             <gray>Thoth Discord <aqua>#minecraft_auth</aqua> チャンネルで</gray>
-                            <aqua><bold>{code}</bold></aqua>
-                            <white>と送信してから、もう一度参加してください。</white>
+                            <aqua>{code}</aqua> <white>と送信してから、もう一度参加してください。</white>
                         """.trimIndent(),
                     blacklisted = root.optionalString("messages", "blacklisted")
                         ?: """

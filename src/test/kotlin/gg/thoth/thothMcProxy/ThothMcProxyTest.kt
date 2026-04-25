@@ -24,7 +24,6 @@ import kotlin.test.assertTrue
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.TextComponent
 import net.kyori.adventure.text.format.NamedTextColor
-import net.kyori.adventure.text.format.TextDecoration
 import org.junit.jupiter.api.io.TempDir
 import org.slf4j.helpers.NOPLogger
 
@@ -92,10 +91,10 @@ class ThothMcProxyTest {
         every { authService.evaluateLogin(login) } returns LoginDecision.deny(
             message = """
                 <yellow>Thoth Minecraft Serverへようこそ！</yellow>
+
                 <white>まだ認証が完了していません。</white>
                 <gray>Thoth Discord <aqua>#minecraft_auth</aqua> チャンネルで</gray>
-                <aqua><bold>ABC123</bold></aqua>
-                <white>と送信してから、もう一度参加してください。</white>
+                <aqua>ABC123</aqua> <white>と送信してから、もう一度参加してください。</white>
             """.trimIndent(),
         )
         every { event.result = capture(result) } just runs
@@ -110,8 +109,7 @@ class ThothMcProxyTest {
         assertTrue(
             textParts.any {
                 it.content() == "ABC123" &&
-                    it.color() == NamedTextColor.AQUA &&
-                    it.decoration(TextDecoration.BOLD) == TextDecoration.State.TRUE
+                    it.color() == NamedTextColor.AQUA
             },
         )
     }

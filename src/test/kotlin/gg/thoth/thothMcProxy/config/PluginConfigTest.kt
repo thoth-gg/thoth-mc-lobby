@@ -17,7 +17,7 @@ class PluginConfigTest {
         val config = PluginConfig.load(tempDir, javaClass.classLoader)
 
         assertTrue(config.messages.pendingAuth.contains('\n'))
-        assertTrue(config.messages.pendingAuth.contains("<aqua><bold>{code}</bold></aqua>"))
+        assertTrue(config.messages.pendingAuth.contains("<aqua>{code}</aqua>"))
         assertTrue(config.messages.discordUnavailable.contains('\n'))
         assertEquals("✅", config.reactions.success)
     }
@@ -44,10 +44,10 @@ class PluginConfigTest {
         assertEquals(
             """
             <yellow>Thoth Minecraft Serverへようこそ！</yellow>
+
             <white>まだ認証が完了していません。</white>
             <gray>Thoth Discord <aqua>#minecraft_auth</aqua> チャンネルで</gray>
-            <aqua><bold>{code}</bold></aqua>
-            <white>と送信してから、もう一度参加してください。</white>
+            <aqua>{code}</aqua> <white>と送信してから、もう一度参加してください。</white>
             """.trimIndent(),
             config.messages.pendingAuth,
         )
