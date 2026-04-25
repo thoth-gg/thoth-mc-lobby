@@ -7,6 +7,7 @@ import gg.thoth.thothMcProxy.config.PluginConfig
 import gg.thoth.thothMcProxy.config.PolicyConfig
 import gg.thoth.thothMcProxy.config.StorageConfig
 import gg.thoth.thothMcProxy.model.AuthCompletionStatus
+import gg.thoth.thothMcProxy.model.LoginDenialSeverity
 import gg.thoth.thothMcProxy.model.Platform
 import gg.thoth.thothMcProxy.model.ReactionDecision
 import gg.thoth.thothMcProxy.model.ResolvedLogin
@@ -58,6 +59,8 @@ class AuthServiceTest {
 
         assertFalse(first.allowed)
         assertFalse(second.allowed)
+        assertEquals(LoginDenialSeverity.ACTION_REQUIRED, first.denialSeverity)
+        assertEquals(LoginDenialSeverity.ACTION_REQUIRED, second.denialSeverity)
         assertTrue(first.message!!.contains("ABC123"))
         assertTrue(second.message!!.contains("XYZ789"))
         assertEquals(
@@ -123,6 +126,7 @@ class AuthServiceTest {
         val decision = service.evaluateLogin(login)
 
         assertFalse(decision.allowed)
+        assertEquals(LoginDenialSeverity.ERROR, decision.denialSeverity)
         assertEquals(testConfig().messages.discordUnavailable, decision.message)
     }
 

@@ -7,13 +7,32 @@ import kotlin.test.assertTrue
 
 class AuthCodeGeneratorTest {
     @Test
-    fun `generate returns uppercase alphanumeric code with configured length`() {
+    fun `generate returns code with configured length from unambiguous characters`() {
         val random = SecureRandom.getInstance("SHA1PRNG").apply { setSeed(42L) }
         val generator = AuthCodeGenerator(random)
 
         val code = generator.generate(6)
 
         assertEquals(6, code.length)
-        assertTrue(code.matches(Regex("[A-Z0-9]{6}")))
+        assertTrue(code.matches(Regex("[ABCDEFGHJKMNPQRSTUVWXYZ23456789]{6}")))
+        assertTrue(code.none { it in "01ILO" })
+    }
+
+    @Test
+    fun `generate uses only unambiguous alphabet`() {
+        val random = SequentialSecureRandom()
+        val generator = AuthCodeGenerator(random)
+
+        val code = generator.generate(31)
+
+        assertEquals("ABCDEFGHJKMNPQRSTUVWXYZ23456789", code)
+    }
+
+    private class SequentialSecureRandom : SecureRandom() {
+        private var next = 0
+
+        override fun nextInt(bound: Int): Int {
+            return next++ % bound
+        }
     }
 }

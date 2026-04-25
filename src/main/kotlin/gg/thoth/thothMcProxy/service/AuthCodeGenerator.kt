@@ -7,11 +7,14 @@ class AuthCodeGenerator(
 ) {
     fun generate(length: Int): String {
         require(length > 0) { "Code length must be positive" }
-        val alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
         return buildString(length) {
             repeat(length) {
-                append(alphabet[random.nextInt(alphabet.length)])
+                append(ALPHABET[random.nextInt(ALPHABET.length)])
             }
         }
+    }
+
+    private companion object {
+        private const val ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"
     }
 }

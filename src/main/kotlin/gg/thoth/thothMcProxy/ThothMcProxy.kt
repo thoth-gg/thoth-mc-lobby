@@ -14,6 +14,7 @@ import gg.thoth.thothMcProxy.discord.DiscordAuthMessageHandler
 import gg.thoth.thothMcProxy.discord.DiscordBot
 import gg.thoth.thothMcProxy.discord.DiscordRoleService
 import gg.thoth.thothMcProxy.floodgate.FloodgateService
+import gg.thoth.thothMcProxy.model.LoginDenialSeverity
 import gg.thoth.thothMcProxy.repository.AuthRepository
 import gg.thoth.thothMcProxy.service.AuthCodeGenerator
 import gg.thoth.thothMcProxy.service.AuthLoginListener
@@ -21,6 +22,8 @@ import gg.thoth.thothMcProxy.service.AuthService
 import java.nio.file.Path
 import java.time.Clock
 import net.kyori.adventure.text.Component
+import net.kyori.adventure.text.format.NamedTextColor
+import net.kyori.adventure.text.format.TextColor
 import org.slf4j.Logger
 
 class ThothMcProxy @Inject constructor(
@@ -77,14 +80,24 @@ class ThothMcProxy @Inject constructor(
             val resolvedLogin = floodgateService.resolve(event.player)
             val decision = authService.evaluateLogin(resolvedLogin)
             if (!decision.allowed) {
-                event.result = ResultedEvent.ComponentResult.denied(Component.text(requireNotNull(decision.message)))
+                event.result = deniedLogin(
+                    message = requireNotNull(decision.message),
+                    severity = decision.denialSeverity,
+                )
             }
         }.onFailure { throwable ->
             logger.warn("Failed to evaluate thoth auth for {}", event.player.username, throwable)
             val message = runCatching { config.messages.discordUnavailable }
                 .getOrDefault("Thoth Minecraft Serverの認証状態を確認できませんでした。しばらくしてからもう一度参加してください。")
-            event.result = ResultedEvent.ComponentResult.denied(Component.text(message))
+            event.result = deniedLogin(message, LoginDenialSeverity.ERROR)
         }
+    }
+
+    private fun deniedLogin(
+        message: String,
+        severity: LoginDenialSeverity,
+    ): ResultedEvent.ComponentResult {
+        return ResultedEvent.ComponentResult.denied(Component.text(message, severity.textColor()))
     }
 
     internal fun reloadPlugin(): String {
@@ -165,5 +178,12 @@ class ThothMcProxy @Inject constructor(
             server.commandManager.register(commandMeta, command)
         }
         return true
+    }
+}
+
+private fun LoginDenialSeverity.textColor(): TextColor {
+    return when (this) {
+        LoginDenialSeverity.ACTION_REQUIRED -> NamedTextColor.YELLOW
+        LoginDenialSeverity.ERROR -> NamedTextColor.RED
     }
 }

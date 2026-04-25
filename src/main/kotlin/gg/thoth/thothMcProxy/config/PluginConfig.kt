@@ -51,13 +51,27 @@ data class PluginConfig(
                 ),
                 messages = MessageConfig(
                     pendingAuth = root.optionalString("messages", "pendingAuth")
-                        ?: "Thoth Minecraft Serverへようこそ！あなたはまだ認証が完了していません。Thoth Discord #minecraft_auth チャンネルで '{code}' と送信してからもう一度参加してください！",
+                        ?: """
+                            Thoth Minecraft Serverへようこそ！
+                            まだ認証が完了していません。
+                            Thoth Discord #minecraft_auth チャンネルで「{code}」と送信してから、
+                            もう一度参加してください。
+                        """.trimIndent(),
                     blacklisted = root.optionalString("messages", "blacklisted")
-                        ?: "Thoth Minecraft Serverへ参加できません。Discord のロール設定により認証またはログインが拒否されました。",
+                        ?: """
+                            Thoth Minecraft Serverへ参加できません。
+                            Discord のロール設定により、認証またはログインが拒否されました。
+                        """.trimIndent(),
                     discordUnavailable = root.optionalString("messages", "discordUnavailable")
-                        ?: "Thoth Minecraft Serverの認証状態を確認できませんでした。しばらくしてからもう一度参加してください。",
+                        ?: """
+                            Thoth Minecraft Serverの認証状態を確認できませんでした。
+                            しばらくしてからもう一度参加してください。
+                        """.trimIndent(),
                     linkMismatch = root.optionalString("messages", "linkMismatch")
-                        ?: "Thoth Minecraft ServerのBedrock連携状態が一致しません。管理者へ連絡してください。",
+                        ?: """
+                            Thoth Minecraft ServerのBedrock連携状態が一致しません。
+                            管理者へ連絡してください。
+                        """.trimIndent(),
                 ),
                 policy = PolicyConfig(
                     maxJavaPerDiscord = root.optionalInt("policy", "maxJavaPerDiscord") ?: 1,
