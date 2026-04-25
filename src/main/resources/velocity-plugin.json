@@ -1,0 +1,12 @@
+{
+  "id": "thoth-mc-proxy",
+  "name": "thoth-mc-proxy",
+  "version": "${version}",
+  "main": "gg.thoth.thothMcProxy.ThothMcProxy",
+  "dependencies": [
+    {
+      "id": "floodgate",
+      "optional": false
+    }
+  ]
+}

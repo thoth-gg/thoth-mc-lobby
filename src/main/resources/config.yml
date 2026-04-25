@@ -1,0 +1,22 @@
+discord:
+  token: "CHANGE_ME"
+  guildId: "123456789012345678"
+  authChannelId: "123456789012345678"
+  blacklistedRoleIds: []
+
+storage:
+  path: "auth.db"
+
+auth:
+  codeLength: 6
+  codeTtlSeconds: 600
+
+messages:
+  pendingAuth: "Thoth Minecraft Serverへようこそ！あなたはまだ認証が完了していません。Thoth Discord #minecraft_auth チャンネルで '{code}' と送信してからもう一度参加してください！"
+  blacklisted: "Thoth Minecraft Serverへ参加できません。Discord のロール設定により認証またはログインが拒否されました。"
+  discordUnavailable: "Thoth Minecraft Serverの認証状態を確認できませんでした。しばらくしてからもう一度参加してください。"
+  linkMismatch: "Thoth Minecraft ServerのBedrock連携状態が一致しません。管理者へ連絡してください。"
+
+policy:
+  maxJavaPerDiscord: 1
+  maxBedrockPerDiscord: 1
