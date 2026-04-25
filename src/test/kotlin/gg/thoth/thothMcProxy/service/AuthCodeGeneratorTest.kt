@@ -14,8 +14,8 @@ class AuthCodeGeneratorTest {
         val code = generator.generate(6)
 
         assertEquals(6, code.length)
-        assertTrue(code.matches(Regex("[ABCDEFGHJKMNPQRSTUVWXYZ23456789]{6}")))
-        assertTrue(code.none { it in "01ILO" })
+        assertTrue(code.matches(Regex("[ABCDEFGHJKMNPQRSTWXYZ23456789]{6}")))
+        assertTrue(code.none { it in "01ILOUV" })
     }
 
     @Test
@@ -23,9 +23,9 @@ class AuthCodeGeneratorTest {
         val random = SequentialSecureRandom()
         val generator = AuthCodeGenerator(random)
 
-        val code = generator.generate(31)
+        val code = generator.generate(29)
 
-        assertEquals("ABCDEFGHJKMNPQRSTUVWXYZ23456789", code)
+        assertEquals("ABCDEFGHJKMNPQRSTWXYZ23456789", code)
     }
 
     private class SequentialSecureRandom : SecureRandom() {

@@ -2,7 +2,6 @@ package gg.thoth.thothMcProxy.service
 
 import gg.thoth.thothMcProxy.config.PluginConfig
 import gg.thoth.thothMcProxy.model.AuthCompletionStatus
-import gg.thoth.thothMcProxy.model.LoginDenialSeverity
 import gg.thoth.thothMcProxy.model.LoginDecision
 import gg.thoth.thothMcProxy.model.Platform
 import gg.thoth.thothMcProxy.model.ReactionDecision
@@ -97,8 +96,6 @@ class AuthService(
             if (stored) {
                 return LoginDecision.deny(
                     config.messages.pendingAuth.replace("{code}", code),
-                    LoginDenialSeverity.ACTION_REQUIRED,
-                    highlightedText = code,
                 )
             }
         }

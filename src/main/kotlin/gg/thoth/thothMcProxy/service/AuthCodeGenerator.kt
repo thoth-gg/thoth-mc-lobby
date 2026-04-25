@@ -15,6 +15,6 @@ class AuthCodeGenerator(
     }
 
     private companion object {
-        private const val ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"
+        private const val ALPHABET = "ABCDEFGHJKMNPQRSTWXYZ23456789"
     }
 }

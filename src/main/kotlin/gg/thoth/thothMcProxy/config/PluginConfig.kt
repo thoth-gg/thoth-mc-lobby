@@ -53,26 +53,26 @@ data class PluginConfig(
                 messages = MessageConfig(
                     pendingAuth = root.optionalString("messages", "pendingAuth")
                         ?: """
-                            Thoth Minecraft Serverへようこそ！
-                            まだ認証が完了していません。
-                            Thoth Discord #minecraft_auth チャンネルで
-                            「{code}」
-                            と送信してから、もう一度参加してください。
+                            <yellow>Thoth Minecraft Serverへようこそ！</yellow>
+                            <white>まだ認証が完了していません。</white>
+                            <gray>Thoth Discord <aqua>#minecraft_auth</aqua> チャンネルで</gray>
+                            <aqua><bold>{code}</bold></aqua>
+                            <white>と送信してから、もう一度参加してください。</white>
                         """.trimIndent(),
                     blacklisted = root.optionalString("messages", "blacklisted")
                         ?: """
-                            Thoth Minecraft Serverへ参加できません。
-                            Discord のロール設定により、認証またはログインが拒否されました。
+                            <red>Thoth Minecraft Serverへ参加できません。</red>
+                            <white>Discord のロール設定により、認証またはログインが拒否されました。</white>
                         """.trimIndent(),
                     discordUnavailable = root.optionalString("messages", "discordUnavailable")
                         ?: """
-                            Thoth Minecraft Serverの認証状態を確認できませんでした。
-                            しばらくしてからもう一度参加してください。
+                            <red>Thoth Minecraft Serverの認証状態を確認できませんでした。</red>
+                            <white>しばらくしてからもう一度参加してください。</white>
                         """.trimIndent(),
                     linkMismatch = root.optionalString("messages", "linkMismatch")
                         ?: """
-                            Thoth Minecraft ServerのBedrock連携状態が一致しません。
-                            管理者へ連絡してください。
+                            <red>Thoth Minecraft ServerのBedrock連携状態が一致しません。</red>
+                            <white>管理者へ連絡してください。</white>
                         """.trimIndent(),
                 ),
                 reactions = ReactionConfig(

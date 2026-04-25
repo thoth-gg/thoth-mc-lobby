@@ -5,7 +5,6 @@ import com.velocitypowered.api.event.connection.LoginEvent
 import com.velocitypowered.api.proxy.Player
 import com.velocitypowered.api.proxy.ProxyServer
 import gg.thoth.thothMcProxy.floodgate.FloodgateService
-import gg.thoth.thothMcProxy.model.LoginDenialSeverity
 import gg.thoth.thothMcProxy.model.LoginDecision
 import gg.thoth.thothMcProxy.model.Platform
 import gg.thoth.thothMcProxy.model.ResolvedLogin
@@ -45,7 +44,15 @@ class ThothMcProxyTest {
         val player = mockk<Player>()
         val result = slot<ResultedEvent.ComponentResult>()
 
-        setPrivateField(plugin, "config", testConfig())
+        setPrivateField(
+            plugin,
+            "config",
+            testConfig().copy(
+                messages = testConfig().messages.copy(
+                    discordUnavailable = "<red>discord-unavailable</red>",
+                ),
+            ),
+        )
         setPrivateField(plugin, "floodgateService", floodgateService)
         every { event.player } returns player
         every { player.username } returns "alice"
@@ -83,12 +90,13 @@ class ThothMcProxyTest {
         every { event.player } returns player
         every { floodgateService.resolve(player) } returns login
         every { authService.evaluateLogin(login) } returns LoginDecision.deny(
-            message = (
-                "Thoth Minecraft Serverへようこそ！あなたはまだ認証が完了していません。" +
-                    "Thoth Discord #minecraft_auth チャンネルで 'ABC123' と送信してからもう一度参加してください！"
-                ),
-            denialSeverity = LoginDenialSeverity.ACTION_REQUIRED,
-            highlightedText = "ABC123",
+            message = """
+                <yellow>Thoth Minecraft Serverへようこそ！</yellow>
+                <white>まだ認証が完了していません。</white>
+                <gray>Thoth Discord <aqua>#minecraft_auth</aqua> チャンネルで</gray>
+                <aqua><bold>ABC123</bold></aqua>
+                <white>と送信してから、もう一度参加してください。</white>
+            """.trimIndent(),
         )
         every { event.result = capture(result) } just runs
 
