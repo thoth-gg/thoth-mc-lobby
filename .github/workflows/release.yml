@@ -1,0 +1,62 @@
+name: Build and Release
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x ./gradlew
+
+      - name: Build with Gradle
+        run: ./gradlew build
+
+      - name: Determine next version tag
+        id: next_tag
+        run: |
+          git fetch --tags
+          latest=$(git tag --list 'v*' | grep -E '^v[0-9]+$' | sed 's/^v//' | sort -n | tail -n1)
+          if [ -z "$latest" ]; then
+            next=1
+          else
+            next=$((latest + 1))
+          fi
+          echo "tag=v${next}" >> "$GITHUB_OUTPUT"
+
+      - name: Collect build artifacts
+        id: artifacts
+        run: |
+          mkdir -p release-artifacts
+          find build/libs -maxdepth 1 -type f -name '*.jar' -exec cp {} release-artifacts/ \;
+          ls -la release-artifacts
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.next_tag.outputs.tag }}
+          name: ${{ steps.next_tag.outputs.tag }}
+          files: release-artifacts/*.jar
+          generate_release_notes: true
