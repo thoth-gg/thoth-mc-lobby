@@ -89,7 +89,7 @@ class DiscordAuthMessageHandlerTest {
             isBot = false,
         )
 
-        assertEquals(ReactionDecision.FAILURE, result)
+        assertEquals(ReactionDecision.BLOCKED, result)
         assertNull(repository.findAccount(accountUuid))
         assertEquals(true, repository.getRoleCache("discord-1")?.isBlacklisted)
     }
@@ -124,7 +124,7 @@ class DiscordAuthMessageHandlerTest {
             isBot = false,
         )
 
-        assertEquals(ReactionDecision.FAILURE, result)
+        assertEquals(ReactionDecision.BLOCKED, result)
         assertNull(repository.findAccount(accountUuid))
         assertEquals(true, repository.getRoleCache("discord-1")?.isBlacklisted)
     }

@@ -1,6 +1,7 @@
 package gg.thoth.thothMcProxy.discord
 
 import gg.thoth.thothMcProxy.config.PluginConfig
+import gg.thoth.thothMcProxy.model.ReactionDecision
 import net.dv8tion.jda.api.JDA
 import net.dv8tion.jda.api.JDABuilder
 import net.dv8tion.jda.api.entities.emoji.Emoji
@@ -84,15 +85,27 @@ private class DiscordMessageListener(
             isBot = event.author.isBot,
         ) ?: return
 
-        val emoji = when (decision) {
-            gg.thoth.thothMcProxy.model.ReactionDecision.SUCCESS -> "✅"
-            gg.thoth.thothMcProxy.model.ReactionDecision.FAILURE -> "❌"
-        }
-        event.message.addReaction(Emoji.fromUnicode(emoji)).queue(
+        event.message.addReaction(emojiFor(decision)).queue(
             {},
             { throwable ->
                 logger.warn("Failed to add Discord reaction for user {}", event.author.id, throwable)
             },
         )
+    }
+
+    private fun emojiFor(decision: ReactionDecision): Emoji {
+        val emoji = when (decision) {
+            ReactionDecision.SUCCESS -> config.reactions.success
+            ReactionDecision.CODE_NOT_FOUND -> config.reactions.codeNotFound
+            ReactionDecision.ALREADY_LINKED -> config.reactions.alreadyLinked
+            ReactionDecision.SLOT_FULL -> config.reactions.slotFull
+            ReactionDecision.LINK_MISMATCH -> config.reactions.linkMismatch
+            ReactionDecision.BLOCKED -> config.reactions.blocked
+        }
+        return if (emoji.startsWith("<") && emoji.endsWith(">")) {
+            Emoji.fromFormatted(emoji)
+        } else {
+            Emoji.fromUnicode(emoji)
+        }
     }
 }

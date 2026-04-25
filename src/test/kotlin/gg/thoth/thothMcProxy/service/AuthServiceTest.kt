@@ -5,6 +5,7 @@ import gg.thoth.thothMcProxy.config.DiscordConfig
 import gg.thoth.thothMcProxy.config.MessageConfig
 import gg.thoth.thothMcProxy.config.PluginConfig
 import gg.thoth.thothMcProxy.config.PolicyConfig
+import gg.thoth.thothMcProxy.config.ReactionConfig
 import gg.thoth.thothMcProxy.config.StorageConfig
 import gg.thoth.thothMcProxy.model.AuthCompletionStatus
 import gg.thoth.thothMcProxy.model.LoginDenialSeverity
@@ -107,6 +108,22 @@ class AuthServiceTest {
             AuthCompletionStatus.SUCCESS,
             repository.completeAuthentication("discord-1", hash("XYZ789"), now).status,
         )
+    }
+
+    @Test
+    fun `completeAuthentication returns detailed reaction decisions for failed auth results`() {
+        val repository = repository()
+        val service = service(repository, FakeRoleStatusService(), mockk(relaxed = true))
+        val existingJava = UUID.randomUUID()
+        val secondJava = UUID.randomUUID()
+
+        seedAuthorizedAccount(repository, "discord-1", existingJava, Platform.JAVA, "alice")
+        repository.replacePendingCode(existingJava, existingJava, Platform.JAVA, "alice", hash("JAVA02"), now, now.plusSeconds(600))
+        repository.replacePendingCode(secondJava, secondJava, Platform.JAVA, "alice-alt", hash("JAVA03"), now, now.plusSeconds(600))
+
+        assertEquals(ReactionDecision.CODE_NOT_FOUND, service.completeAuthentication("discord-1", "BAD999"))
+        assertEquals(ReactionDecision.ALREADY_LINKED, service.completeAuthentication("discord-2", "JAVA02"))
+        assertEquals(ReactionDecision.SLOT_FULL, service.completeAuthentication("discord-1", "JAVA03"))
     }
 
     @Test
@@ -286,7 +303,7 @@ class AuthServiceTest {
         val result = service.completeAuthentication("discord-1", "BED001")
 
         assertFalse(pending.allowed)
-        assertEquals(ReactionDecision.FAILURE, result)
+        assertEquals(ReactionDecision.LINK_MISMATCH, result)
         assertNull(repository.findAccount(bedrock))
         assertEquals(
             AuthCompletionStatus.LINKED_JAVA_MISMATCH,
@@ -400,6 +417,14 @@ internal fun testConfig(): PluginConfig {
             blacklisted = "blacklisted",
             discordUnavailable = "discord-unavailable",
             linkMismatch = "link-mismatch",
+        ),
+        reactions = ReactionConfig(
+            success = "✅",
+            codeNotFound = "❓",
+            alreadyLinked = "🔒",
+            slotFull = "📦",
+            linkMismatch = "🔗",
+            blocked = "⛔",
         ),
         policy = PolicyConfig(
             maxJavaPerDiscord = 1,

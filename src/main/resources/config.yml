@@ -28,6 +28,15 @@ messages:
     Thoth Minecraft ServerのBedrock連携状態が一致しません。
     管理者へ連絡してください。
 
+reactions:
+  # Discord custom emoji can be used as "<:emoji_name:emoji_id>".
+  success: "✅"
+  codeNotFound: "❓"
+  alreadyLinked: "🔒"
+  slotFull: "📦"
+  linkMismatch: "🔗"
+  blocked: "⛔"
+
 policy:
   maxJavaPerDiscord: 1
   maxBedrockPerDiscord: 1

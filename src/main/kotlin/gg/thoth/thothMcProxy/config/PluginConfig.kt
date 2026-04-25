@@ -9,6 +9,7 @@ data class PluginConfig(
     val storage: StorageConfig,
     val auth: AuthConfig,
     val messages: MessageConfig,
+    val reactions: ReactionConfig,
     val policy: PolicyConfig,
 ) {
     fun resolveStoragePath(dataDirectory: Path): Path {
@@ -74,6 +75,14 @@ data class PluginConfig(
                             管理者へ連絡してください。
                         """.trimIndent(),
                 ),
+                reactions = ReactionConfig(
+                    success = root.optionalStringOrNullSection("reactions", "success") ?: "✅",
+                    codeNotFound = root.optionalStringOrNullSection("reactions", "codeNotFound") ?: "❓",
+                    alreadyLinked = root.optionalStringOrNullSection("reactions", "alreadyLinked") ?: "🔒",
+                    slotFull = root.optionalStringOrNullSection("reactions", "slotFull") ?: "📦",
+                    linkMismatch = root.optionalStringOrNullSection("reactions", "linkMismatch") ?: "🔗",
+                    blocked = root.optionalStringOrNullSection("reactions", "blocked") ?: "⛔",
+                ),
                 policy = PolicyConfig(
                     maxJavaPerDiscord = root.optionalInt("policy", "maxJavaPerDiscord") ?: 1,
                     maxBedrockPerDiscord = root.optionalInt("policy", "maxBedrockPerDiscord") ?: 1,
@@ -114,6 +123,15 @@ data class MessageConfig(
     val linkMismatch: String,
 )
 
+data class ReactionConfig(
+    val success: String,
+    val codeNotFound: String,
+    val alreadyLinked: String,
+    val slotFull: String,
+    val linkMismatch: String,
+    val blocked: String,
+)
+
 data class PolicyConfig(
     val maxJavaPerDiscord: Int,
     val maxBedrockPerDiscord: Int,
@@ -131,6 +149,17 @@ private fun Map<String, Any?>.string(section: String, key: String): String {
 
 private fun Map<String, Any?>.optionalString(section: String, key: String): String? {
     return section(section)[key]?.toString()?.takeIf { it.isNotBlank() }
+}
+
+private fun Map<String, Any?>.optionalStringOrNullSection(section: String, key: String): String? {
+    return optionalSection(section)?.get(key)?.toString()?.takeIf { it.isNotBlank() }
+}
+
+private fun Map<String, Any?>.optionalSection(name: String): Map<String, Any?>? {
+    val raw = this[name] ?: return null
+    require(raw is Map<*, *>) { "Config section $name must be a map" }
+    @Suppress("UNCHECKED_CAST")
+    return raw as Map<String, Any?>
 }
 
 private fun Map<String, Any?>.optionalInt(section: String, key: String): Int? {

@@ -19,6 +19,7 @@ class PluginConfigTest {
         assertTrue(config.messages.pendingAuth.contains('\n'))
         assertTrue(config.messages.pendingAuth.contains("{code}"))
         assertTrue(config.messages.discordUnavailable.contains('\n'))
+        assertEquals("✅", config.reactions.success)
     }
 
     @Test
@@ -50,6 +51,41 @@ class PluginConfigTest {
             """.trimIndent(),
             config.messages.pendingAuth,
         )
+        assertEquals("❓", config.reactions.codeNotFound)
+    }
+
+    @Test
+    fun `load uses configured reaction emoji`() {
+        Files.writeString(
+            tempDir.resolve("config.yml"),
+            """
+            discord:
+              token: "token"
+              guildId: "guild"
+              authChannelId: "channel"
+              blacklistedRoleIds: []
+            storage: {}
+            auth: {}
+            messages: {}
+            reactions:
+              success: "<:thoth_ok:111111111111111111>"
+              codeNotFound: "<:thoth_code_ng:222222222222222222>"
+              alreadyLinked: "<:thoth_already_linked:333333333333333333>"
+              slotFull: "<:thoth_slot_full:444444444444444444>"
+              linkMismatch: "<:thoth_link_mismatch:555555555555555555>"
+              blocked: "<:thoth_blocked:666666666666666666>"
+            policy: {}
+            """.trimIndent(),
+        )
+
+        val config = PluginConfig.load(tempDir, javaClass.classLoader)
+
+        assertEquals("<:thoth_ok:111111111111111111>", config.reactions.success)
+        assertEquals("<:thoth_code_ng:222222222222222222>", config.reactions.codeNotFound)
+        assertEquals("<:thoth_already_linked:333333333333333333>", config.reactions.alreadyLinked)
+        assertEquals("<:thoth_slot_full:444444444444444444>", config.reactions.slotFull)
+        assertEquals("<:thoth_link_mismatch:555555555555555555>", config.reactions.linkMismatch)
+        assertEquals("<:thoth_blocked:666666666666666666>", config.reactions.blocked)
     }
 
     @Test

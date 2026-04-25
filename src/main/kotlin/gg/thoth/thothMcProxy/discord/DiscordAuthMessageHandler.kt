@@ -29,11 +29,11 @@ class DiscordAuthMessageHandler(
         val roleStatus = roleStatusService.updateFromObservedRoles(discordUserId, roleIds)
         if (roleStatus.isBlacklisted == true) {
             logger.info("Rejected auth code for blacklisted Discord user {}", discordUserId)
-            return ReactionDecision.FAILURE
+            return ReactionDecision.BLOCKED
         }
         if (roleStatus.isBlacklisted == null) {
             logger.warn("Rejected auth code because Discord member roles were unavailable for {}", discordUserId)
-            return ReactionDecision.FAILURE
+            return ReactionDecision.BLOCKED
         }
         return authService.completeAuthentication(discordUserId, code)
     }

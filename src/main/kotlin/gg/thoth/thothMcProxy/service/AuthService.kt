@@ -56,7 +56,7 @@ class AuthService(
     fun completeAuthentication(discordUserId: String, code: String): ReactionDecision {
         val normalizedCode = normalizeCode(code)
         if (normalizedCode.length != config.auth.codeLength) {
-            return ReactionDecision.FAILURE
+            return ReactionDecision.CODE_NOT_FOUND
         }
 
         val result = repository.completeAuthentication(
@@ -67,12 +67,12 @@ class AuthService(
 
         return when (result.status) {
             AuthCompletionStatus.SUCCESS -> ReactionDecision.SUCCESS
-            AuthCompletionStatus.CODE_NOT_FOUND,
-            AuthCompletionStatus.ACCOUNT_ALREADY_AUTHENTICATED,
+            AuthCompletionStatus.CODE_NOT_FOUND -> ReactionDecision.CODE_NOT_FOUND
+            AuthCompletionStatus.ACCOUNT_ALREADY_AUTHENTICATED -> ReactionDecision.ALREADY_LINKED
             AuthCompletionStatus.PRIMARY_JAVA_ALREADY_EXISTS,
             AuthCompletionStatus.PRIMARY_BEDROCK_ALREADY_EXISTS,
-            AuthCompletionStatus.LINKED_JAVA_MISMATCH,
-            -> ReactionDecision.FAILURE
+            -> ReactionDecision.SLOT_FULL
+            AuthCompletionStatus.LINKED_JAVA_MISMATCH -> ReactionDecision.LINK_MISMATCH
         }
     }
 
