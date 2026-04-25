@@ -273,7 +273,7 @@ class AuthServiceTest {
         )
 
         assertTrue(decision.allowed)
-        assertEquals(listOf(BedrockLink(primaryJava, account.playerUuid, "alice-bedrock")), linkService.links)
+        assertEquals(listOf(BedrockLink(primaryJava, account.playerUuid, "alice")), linkService.links)
     }
 
     @Test
@@ -350,7 +350,7 @@ class AuthServiceTest {
         assertFalse(pending.allowed)
         assertEquals(ReactionDecision.SUCCESS, result)
         assertNotNull(repository.findAccount(bedrock))
-        assertEquals(listOf(BedrockLink(primaryJava, bedrockPlayer, "alice-bedrock")), linkService.links)
+        assertEquals(listOf(BedrockLink(primaryJava, bedrockPlayer, "alice")), linkService.links)
     }
 
     @Test
@@ -476,7 +476,7 @@ class AuthServiceTest {
         assertFalse(pending.allowed)
         assertEquals(ReactionDecision.SUCCESS, result)
         assertTrue(linkedBedrock.allowed)
-        assertEquals(listOf(BedrockLink(primaryJava, bedrockPlayerUuid, "alice-bedrock")), linkService.links)
+        assertEquals(listOf(BedrockLink(primaryJava, bedrockPlayerUuid, "alice")), linkService.links)
     }
 
     @Test
@@ -568,7 +568,7 @@ class AuthServiceTest {
 private data class BedrockLink(
     val primaryJavaUuid: UUID,
     val bedrockUuid: UUID,
-    val bedrockUsername: String,
+    val javaUsername: String,
 )
 
 private class FakeBedrockLinkService(
@@ -576,8 +576,8 @@ private class FakeBedrockLinkService(
 ) : BedrockLinkService {
     val links = mutableListOf<BedrockLink>()
 
-    override fun linkToJava(primaryJavaUuid: UUID, bedrockUuid: UUID, bedrockUsername: String): Boolean {
-        links += BedrockLink(primaryJavaUuid, bedrockUuid, bedrockUsername)
+    override fun linkToJava(primaryJavaUuid: UUID, bedrockUuid: UUID, javaUsername: String): Boolean {
+        links += BedrockLink(primaryJavaUuid, bedrockUuid, javaUsername)
         return linkResult
     }
 }

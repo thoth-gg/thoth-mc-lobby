@@ -48,10 +48,12 @@ class AuthService(
             val primaryJavaUuid = identity?.primaryJavaUuid
             if (primaryJavaUuid != null) {
                 if (login.linkedJavaUuid == null) {
+                    val javaAccount = repository.findAccount(primaryJavaUuid)
+                        ?: return LoginDecision.deny(config.messages.linkMismatch)
                     val linked = bedrockLinkService.linkToJava(
                         primaryJavaUuid = primaryJavaUuid,
                         bedrockUuid = login.playerUuid,
-                        bedrockUsername = login.username,
+                        javaUsername = javaAccount.lastUsername,
                     )
                     if (!linked) {
                         return LoginDecision.deny(config.messages.linkMismatch)
@@ -126,10 +128,11 @@ class AuthService(
         val identity = repository.findIdentity(discordUserId)
         return when {
             pending.platform == Platform.BEDROCK && pending.linkedJavaUuid == null && identity?.primaryJavaUuid != null -> {
+                val javaAccount = repository.findAccount(identity.primaryJavaUuid) ?: return false
                 bedrockLinkService.linkToJava(
                     primaryJavaUuid = identity.primaryJavaUuid,
                     bedrockUuid = pending.playerUuid,
-                    bedrockUsername = pending.lastUsername,
+                    javaUsername = javaAccount.lastUsername,
                 )
             }
 
@@ -138,7 +141,7 @@ class AuthService(
                 bedrockLinkService.linkToJava(
                     primaryJavaUuid = pending.accountUuid,
                     bedrockUuid = bedrockAccount.playerUuid,
-                    bedrockUsername = bedrockAccount.lastUsername,
+                    javaUsername = pending.lastUsername,
                 )
             }
 
@@ -167,5 +170,5 @@ interface RoleStatusService {
 }
 
 fun interface BedrockLinkService {
-    fun linkToJava(primaryJavaUuid: UUID, bedrockUuid: UUID, bedrockUsername: String): Boolean
+    fun linkToJava(primaryJavaUuid: UUID, bedrockUuid: UUID, javaUsername: String): Boolean
 }

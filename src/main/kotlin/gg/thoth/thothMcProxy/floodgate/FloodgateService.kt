@@ -59,15 +59,15 @@ class FloodgateService(
         }.getOrDefault(false)
     }
 
-    override fun linkToJava(primaryJavaUuid: UUID, bedrockUuid: UUID, bedrockUsername: String): Boolean {
+    override fun linkToJava(primaryJavaUuid: UUID, bedrockUuid: UUID, javaUsername: String): Boolean {
         return runCatching {
-            api().playerLink.linkPlayer(primaryJavaUuid, bedrockUuid, bedrockUsername).get(10, TimeUnit.SECONDS)
+            api().playerLink.linkPlayer(bedrockUuid, primaryJavaUuid, javaUsername).get(10, TimeUnit.SECONDS)
             true
         }.onFailure { throwable ->
             logger.warn(
-                "Failed to link Floodgate Bedrock account {} ({}) to Java UUID {}",
-                bedrockUsername,
+                "Failed to link Floodgate Bedrock account {} to Java account {} ({})",
                 bedrockUuid,
+                javaUsername,
                 primaryJavaUuid,
                 throwable,
             )

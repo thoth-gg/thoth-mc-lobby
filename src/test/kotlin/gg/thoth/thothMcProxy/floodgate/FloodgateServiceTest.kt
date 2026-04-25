@@ -97,10 +97,10 @@ class FloodgateServiceTest {
         mockkStatic(FloodgateApi::class)
         every { FloodgateApi.getInstance() } returns api
         every { api.playerLink } returns playerLink
-        every { playerLink.linkPlayer(javaUuid, bedrockUuid, "alice-bedrock") } returns CompletableFuture.completedFuture(null)
+        every { playerLink.linkPlayer(bedrockUuid, javaUuid, "alice") } returns CompletableFuture.completedFuture(null)
 
         val result = FloodgateService(org.slf4j.helpers.NOPLogger.NOP_LOGGER)
-            .linkToJava(javaUuid, bedrockUuid, "alice-bedrock")
+            .linkToJava(javaUuid, bedrockUuid, "alice")
 
         assertTrue(result)
     }
