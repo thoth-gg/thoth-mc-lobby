@@ -144,29 +144,32 @@ class AuthServiceTest {
     }
 
     @Test
-    fun `evaluateLogin denies bedrock account when linked java does not match primary java`() {
+    fun `evaluateLogin repairs bedrock account when linked java does not match primary java`() {
         val repository = repository()
         val primaryJava = UUID.randomUUID()
         val bedrock = UUID.randomUUID()
+        val oldJava = UUID.randomUUID()
         seedAuthorizedAccount(repository, "discord-1", primaryJava, Platform.JAVA, "alice")
         seedAuthorizedAccount(repository, "discord-1", bedrock, Platform.BEDROCK, "alice-bedrock", primaryJava)
+        val linkService = FakeBedrockLinkService()
         val roleService = FakeRoleStatusService(
             loginSnapshot = RoleStatusSnapshot(false, RoleStatusSource.CACHE),
         )
-        val service = service(repository, roleService, mockk(relaxed = true))
+        val service = service(repository, roleService, mockk(relaxed = true), linkService)
+        val bedrockPlayerUuid = UUID.randomUUID()
 
         val decision = service.evaluateLogin(
             ResolvedLogin(
                 platform = Platform.BEDROCK,
                 accountUuid = bedrock,
-                playerUuid = UUID.randomUUID(),
+                playerUuid = bedrockPlayerUuid,
                 username = "alice-bedrock",
-                linkedJavaUuid = UUID.randomUUID(),
+                linkedJavaUuid = oldJava,
             ),
         )
 
-        assertFalse(decision.allowed)
-        assertEquals(testConfig().messages.linkMismatch, decision.message)
+        assertTrue(decision.allowed)
+        assertEquals(listOf(BedrockLink(primaryJava, oldJava, bedrockPlayerUuid, "alice")), linkService.links)
     }
 
     @Test
@@ -180,7 +183,7 @@ class AuthServiceTest {
         val roleService = FakeRoleStatusService(
             loginSnapshot = RoleStatusSnapshot(false, RoleStatusSource.CACHE),
         )
-        val service = service(repository, roleService, mockk(relaxed = true))
+        val service = service(repository, roleService, mockk(relaxed = true), FakeBedrockLinkService(linkResult = false))
         val rejectedPlayerUuid = UUID.randomUUID()
 
         val decision = service.evaluateLogin(
@@ -273,7 +276,7 @@ class AuthServiceTest {
         )
 
         assertTrue(decision.allowed)
-        assertEquals(listOf(BedrockLink(primaryJava, account.playerUuid, "alice")), linkService.links)
+        assertEquals(listOf(BedrockLink(primaryJava, null, account.playerUuid, "alice")), linkService.links)
     }
 
     @Test
@@ -350,7 +353,7 @@ class AuthServiceTest {
         assertFalse(pending.allowed)
         assertEquals(ReactionDecision.SUCCESS, result)
         assertNotNull(repository.findAccount(bedrock))
-        assertEquals(listOf(BedrockLink(primaryJava, bedrockPlayer, "alice")), linkService.links)
+        assertEquals(listOf(BedrockLink(primaryJava, null, bedrockPlayer, "alice")), linkService.links)
     }
 
     @Test
@@ -476,7 +479,7 @@ class AuthServiceTest {
         assertFalse(pending.allowed)
         assertEquals(ReactionDecision.SUCCESS, result)
         assertTrue(linkedBedrock.allowed)
-        assertEquals(listOf(BedrockLink(primaryJava, bedrockPlayerUuid, "alice")), linkService.links)
+        assertEquals(listOf(BedrockLink(primaryJava, null, bedrockPlayerUuid, "alice")), linkService.links)
     }
 
     @Test
@@ -567,6 +570,7 @@ class AuthServiceTest {
 
 private data class BedrockLink(
     val primaryJavaUuid: UUID,
+    val currentLinkedJavaUuid: UUID?,
     val bedrockUuid: UUID,
     val javaUsername: String,
 )
@@ -576,8 +580,13 @@ private class FakeBedrockLinkService(
 ) : BedrockLinkService {
     val links = mutableListOf<BedrockLink>()
 
-    override fun linkToJava(primaryJavaUuid: UUID, bedrockUuid: UUID, javaUsername: String): Boolean {
-        links += BedrockLink(primaryJavaUuid, bedrockUuid, javaUsername)
+    override fun ensureLinkedToJava(
+        primaryJavaUuid: UUID,
+        currentLinkedJavaUuid: UUID?,
+        bedrockUuid: UUID,
+        javaUsername: String,
+    ): Boolean {
+        links += BedrockLink(primaryJavaUuid, currentLinkedJavaUuid, bedrockUuid, javaUsername)
         return linkResult
     }
 }

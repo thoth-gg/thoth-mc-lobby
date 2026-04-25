@@ -88,7 +88,7 @@ class FloodgateServiceTest {
     }
 
     @Test
-    fun `linkToJava delegates to Floodgate player link`() {
+    fun `ensureLinkedToJava delegates to Floodgate player link`() {
         val javaUuid = UUID.randomUUID()
         val bedrockUuid = UUID.randomUUID()
         val api = mockk<FloodgateApi>()
@@ -100,7 +100,27 @@ class FloodgateServiceTest {
         every { playerLink.linkPlayer(bedrockUuid, javaUuid, "alice") } returns CompletableFuture.completedFuture(null)
 
         val result = FloodgateService(org.slf4j.helpers.NOPLogger.NOP_LOGGER)
-            .linkToJava(javaUuid, bedrockUuid, "alice")
+            .ensureLinkedToJava(javaUuid, null, bedrockUuid, "alice")
+
+        assertTrue(result)
+    }
+
+    @Test
+    fun `ensureLinkedToJava unlinks mismatched Java account before linking`() {
+        val oldJavaUuid = UUID.randomUUID()
+        val javaUuid = UUID.randomUUID()
+        val bedrockUuid = UUID.randomUUID()
+        val api = mockk<FloodgateApi>()
+        val playerLink = mockk<PlayerLink>()
+
+        mockkStatic(FloodgateApi::class)
+        every { FloodgateApi.getInstance() } returns api
+        every { api.playerLink } returns playerLink
+        every { playerLink.unlinkPlayer(oldJavaUuid) } returns CompletableFuture.completedFuture(null)
+        every { playerLink.linkPlayer(bedrockUuid, javaUuid, "alice") } returns CompletableFuture.completedFuture(null)
+
+        val result = FloodgateService(org.slf4j.helpers.NOPLogger.NOP_LOGGER)
+            .ensureLinkedToJava(javaUuid, oldJavaUuid, bedrockUuid, "alice")
 
         assertTrue(result)
     }

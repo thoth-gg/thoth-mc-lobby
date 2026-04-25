@@ -59,14 +59,27 @@ class FloodgateService(
         }.getOrDefault(false)
     }
 
-    override fun linkToJava(primaryJavaUuid: UUID, bedrockUuid: UUID, javaUsername: String): Boolean {
+    override fun ensureLinkedToJava(
+        primaryJavaUuid: UUID,
+        currentLinkedJavaUuid: UUID?,
+        bedrockUuid: UUID,
+        javaUsername: String,
+    ): Boolean {
+        if (currentLinkedJavaUuid == primaryJavaUuid) {
+            return true
+        }
         return runCatching {
-            api().playerLink.linkPlayer(bedrockUuid, primaryJavaUuid, javaUsername).get(10, TimeUnit.SECONDS)
+            val playerLink = api().playerLink
+            if (currentLinkedJavaUuid != null) {
+                playerLink.unlinkPlayer(currentLinkedJavaUuid).get(10, TimeUnit.SECONDS)
+            }
+            playerLink.linkPlayer(bedrockUuid, primaryJavaUuid, javaUsername).get(10, TimeUnit.SECONDS)
             true
         }.onFailure { throwable ->
             logger.warn(
-                "Failed to link Floodgate Bedrock account {} to Java account {} ({})",
+                "Failed to reconcile Floodgate Bedrock account {} from linked Java {} to Java account {} ({})",
                 bedrockUuid,
+                currentLinkedJavaUuid,
                 javaUsername,
                 primaryJavaUuid,
                 throwable,

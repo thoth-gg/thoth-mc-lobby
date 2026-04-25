@@ -16,7 +16,7 @@ import java.util.UUID
 class AuthService(
     private val repository: AuthRepository,
     private val roleStatusService: RoleStatusService,
-    private val bedrockLinkService: BedrockLinkService = BedrockLinkService { _, _, _ -> false },
+    private val bedrockLinkService: BedrockLinkService = BedrockLinkService { _, _, _, _ -> false },
     private val codeGenerator: AuthCodeGenerator,
     private val clock: Clock,
     private val config: PluginConfig,
@@ -47,19 +47,18 @@ class AuthService(
             val identity = repository.findIdentity(account.ownerDiscordId)
             val primaryJavaUuid = identity?.primaryJavaUuid
             if (primaryJavaUuid != null) {
-                if (login.linkedJavaUuid == null) {
-                    val javaAccount = repository.findAccount(primaryJavaUuid)
-                        ?: return LoginDecision.deny(config.messages.linkMismatch)
-                    val linked = bedrockLinkService.linkToJava(
+                val javaAccount = repository.findAccount(primaryJavaUuid)
+                    ?: return LoginDecision.deny(config.messages.linkMismatch)
+                if (login.linkedJavaUuid != primaryJavaUuid) {
+                    val linked = bedrockLinkService.ensureLinkedToJava(
                         primaryJavaUuid = primaryJavaUuid,
+                        currentLinkedJavaUuid = login.linkedJavaUuid,
                         bedrockUuid = login.playerUuid,
                         javaUsername = javaAccount.lastUsername,
                     )
                     if (!linked) {
                         return LoginDecision.deny(config.messages.linkMismatch)
                     }
-                } else if (primaryJavaUuid != login.linkedJavaUuid) {
-                    return LoginDecision.deny(config.messages.linkMismatch)
                 }
             }
         }
@@ -129,8 +128,9 @@ class AuthService(
         return when {
             pending.platform == Platform.BEDROCK && pending.linkedJavaUuid == null && identity?.primaryJavaUuid != null -> {
                 val javaAccount = repository.findAccount(identity.primaryJavaUuid) ?: return false
-                bedrockLinkService.linkToJava(
+                bedrockLinkService.ensureLinkedToJava(
                     primaryJavaUuid = identity.primaryJavaUuid,
+                    currentLinkedJavaUuid = pending.linkedJavaUuid,
                     bedrockUuid = pending.playerUuid,
                     javaUsername = javaAccount.lastUsername,
                 )
@@ -138,8 +138,9 @@ class AuthService(
 
             pending.platform == Platform.JAVA && identity?.primaryBedrockUuid != null -> {
                 val bedrockAccount = repository.findAccount(identity.primaryBedrockUuid) ?: return false
-                bedrockLinkService.linkToJava(
+                bedrockLinkService.ensureLinkedToJava(
                     primaryJavaUuid = pending.accountUuid,
+                    currentLinkedJavaUuid = null,
                     bedrockUuid = bedrockAccount.playerUuid,
                     javaUsername = pending.lastUsername,
                 )
@@ -170,5 +171,10 @@ interface RoleStatusService {
 }
 
 fun interface BedrockLinkService {
-    fun linkToJava(primaryJavaUuid: UUID, bedrockUuid: UUID, javaUsername: String): Boolean
+    fun ensureLinkedToJava(
+        primaryJavaUuid: UUID,
+        currentLinkedJavaUuid: UUID?,
+        bedrockUuid: UUID,
+        javaUsername: String,
+    ): Boolean
 }
