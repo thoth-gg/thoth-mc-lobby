@@ -22,8 +22,10 @@ import gg.thoth.thothMcProxy.service.AuthService
 import java.nio.file.Path
 import java.time.Clock
 import net.kyori.adventure.text.Component
+import net.kyori.adventure.text.TextComponent
 import net.kyori.adventure.text.format.NamedTextColor
 import net.kyori.adventure.text.format.TextColor
+import net.kyori.adventure.text.format.TextDecoration
 import org.slf4j.Logger
 
 class ThothMcProxy @Inject constructor(
@@ -83,21 +85,31 @@ class ThothMcProxy @Inject constructor(
                 event.result = deniedLogin(
                     message = requireNotNull(decision.message),
                     severity = decision.denialSeverity,
+                    highlightedText = decision.highlightedText,
                 )
             }
         }.onFailure { throwable ->
             logger.warn("Failed to evaluate thoth auth for {}", event.player.username, throwable)
             val message = runCatching { config.messages.discordUnavailable }
                 .getOrDefault("Thoth Minecraft Serverの認証状態を確認できませんでした。しばらくしてからもう一度参加してください。")
-            event.result = deniedLogin(message, LoginDenialSeverity.ERROR)
+            event.result = deniedLogin(message, LoginDenialSeverity.ERROR, highlightedText = null)
         }
     }
 
     private fun deniedLogin(
         message: String,
         severity: LoginDenialSeverity,
+        highlightedText: String?,
     ): ResultedEvent.ComponentResult {
-        return ResultedEvent.ComponentResult.denied(Component.text(message, severity.textColor()))
+        val formattedMessage = message.withReadableLineBreaks(highlightedText)
+        val builder = Component.text()
+        formattedMessage.lines().forEachIndexed { index, line ->
+            if (index > 0) {
+                builder.append(Component.newline())
+            }
+            builder.appendColoredLine(line, severity.lineColor(index), highlightedText)
+        }
+        return ResultedEvent.ComponentResult.denied(builder.build())
     }
 
     internal fun reloadPlugin(): String {
@@ -186,4 +198,65 @@ private fun LoginDenialSeverity.textColor(): TextColor {
         LoginDenialSeverity.ACTION_REQUIRED -> NamedTextColor.YELLOW
         LoginDenialSeverity.ERROR -> NamedTextColor.RED
     }
+}
+
+private fun LoginDenialSeverity.lineColor(index: Int): TextColor {
+    return if (index == 0) {
+        textColor()
+    } else {
+        NamedTextColor.WHITE
+    }
+}
+
+private fun TextComponent.Builder.appendColoredLine(
+    line: String,
+    color: TextColor,
+    highlightedText: String?,
+): TextComponent.Builder {
+    if (highlightedText.isNullOrBlank() || !line.contains(highlightedText)) {
+        append(Component.text(line, color))
+        return this
+    }
+
+    var rest = line
+    while (rest.isNotEmpty()) {
+        val index = rest.indexOf(highlightedText)
+        if (index < 0) {
+            append(Component.text(rest, color))
+            break
+        }
+        val prefix = rest.substring(0, index)
+        if (prefix.isNotEmpty()) {
+            append(Component.text(prefix, color))
+        }
+        append(Component.text(highlightedText, NamedTextColor.AQUA, TextDecoration.BOLD))
+        rest = rest.substring(index + highlightedText.length)
+    }
+    return this
+}
+
+private fun String.withReadableLineBreaks(highlightedText: String?): String {
+    if (contains('\n')) {
+        return this
+    }
+
+    var readable = this
+        .replace("！あなたは", "！\nあなたは")
+        .replace("！まだ", "！\nまだ")
+        .replace("。Thoth Discord", "。\nThoth Discord")
+        .replace("。Discord", "。\nDiscord")
+        .replace("。しばらく", "。\nしばらく")
+        .replace("。管理者", "。\n管理者")
+
+    if (!highlightedText.isNullOrBlank()) {
+        readable = readable
+            .replace(" '$highlightedText' と", "\n「$highlightedText」\nと")
+            .replace("「$highlightedText」と", "\n「$highlightedText」\nと")
+            .replace("\"$highlightedText\" と", "\n「$highlightedText」\nと")
+    }
+
+    return readable.lines()
+        .map(String::trim)
+        .filter(String::isNotEmpty)
+        .joinToString("\n")
 }

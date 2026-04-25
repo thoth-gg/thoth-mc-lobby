@@ -98,6 +98,7 @@ class AuthService(
                 return LoginDecision.deny(
                     config.messages.pendingAuth.replace("{code}", code),
                     LoginDenialSeverity.ACTION_REQUIRED,
+                    highlightedText = code,
                 )
             }
         }

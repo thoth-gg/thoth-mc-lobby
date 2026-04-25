@@ -61,6 +61,8 @@ class AuthServiceTest {
         assertFalse(second.allowed)
         assertEquals(LoginDenialSeverity.ACTION_REQUIRED, first.denialSeverity)
         assertEquals(LoginDenialSeverity.ACTION_REQUIRED, second.denialSeverity)
+        assertEquals("ABC123", first.highlightedText)
+        assertEquals("XYZ789", second.highlightedText)
         assertTrue(first.message!!.contains("ABC123"))
         assertTrue(second.message!!.contains("XYZ789"))
         assertEquals(

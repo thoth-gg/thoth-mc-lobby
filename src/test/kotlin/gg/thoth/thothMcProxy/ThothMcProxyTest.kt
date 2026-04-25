@@ -22,7 +22,10 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
+import net.kyori.adventure.text.Component
+import net.kyori.adventure.text.TextComponent
 import net.kyori.adventure.text.format.NamedTextColor
+import net.kyori.adventure.text.format.TextDecoration
 import org.junit.jupiter.api.io.TempDir
 import org.slf4j.helpers.NOPLogger
 
@@ -53,11 +56,11 @@ class ThothMcProxyTest {
 
         assertTrue(result.isCaptured)
         assertFalse(result.captured.isAllowed)
-        assertEquals(NamedTextColor.RED, result.captured.getReasonComponent().orElseThrow().color())
+        assertEquals(NamedTextColor.RED, result.captured.getReasonComponent().orElseThrow().textParts().first().color())
     }
 
     @Test
-    fun `handleLogin colors action-required auth denial yellow`() {
+    fun `handleLogin highlights auth code and inserts readable line breaks`() {
         val plugin = ThothMcProxy(
             server = mockk<ProxyServer>(relaxed = true),
             logger = NOPLogger.NOP_LOGGER,
@@ -80,8 +83,12 @@ class ThothMcProxyTest {
         every { event.player } returns player
         every { floodgateService.resolve(player) } returns login
         every { authService.evaluateLogin(login) } returns LoginDecision.deny(
-            message = "pending auth",
+            message = (
+                "Thoth Minecraft Serverへようこそ！あなたはまだ認証が完了していません。" +
+                    "Thoth Discord #minecraft_auth チャンネルで 'ABC123' と送信してからもう一度参加してください！"
+                ),
             denialSeverity = LoginDenialSeverity.ACTION_REQUIRED,
+            highlightedText = "ABC123",
         )
         every { event.result = capture(result) } just runs
 
@@ -89,7 +96,16 @@ class ThothMcProxyTest {
 
         assertTrue(result.isCaptured)
         assertFalse(result.captured.isAllowed)
-        assertEquals(NamedTextColor.YELLOW, result.captured.getReasonComponent().orElseThrow().color())
+        val textParts = result.captured.getReasonComponent().orElseThrow().textParts()
+        assertTrue(textParts.any { it.content().contains('\n') })
+        assertTrue(textParts.mapNotNull(TextComponent::color).toSet().size > 1)
+        assertTrue(
+            textParts.any {
+                it.content() == "ABC123" &&
+                    it.color() == NamedTextColor.AQUA &&
+                    it.decoration(TextDecoration.BOLD) == TextDecoration.State.TRUE
+            },
+        )
     }
 
     private fun setPrivateField(target: Any, fieldName: String, value: Any) {
@@ -97,5 +113,19 @@ class ThothMcProxyTest {
             isAccessible = true
             set(target, value)
         }
+    }
+
+    private fun Component.textParts(): List<TextComponent> {
+        val parts = mutableListOf<TextComponent>()
+
+        fun collect(component: Component) {
+            if (component is TextComponent && component.content().isNotEmpty()) {
+                parts += component
+            }
+            component.children().forEach(::collect)
+        }
+
+        collect(this)
+        return parts
     }
 }

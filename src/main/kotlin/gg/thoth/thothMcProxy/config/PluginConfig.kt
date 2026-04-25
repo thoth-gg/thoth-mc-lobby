@@ -54,8 +54,9 @@ data class PluginConfig(
                         ?: """
                             Thoth Minecraft Serverへようこそ！
                             まだ認証が完了していません。
-                            Thoth Discord #minecraft_auth チャンネルで「{code}」と送信してから、
-                            もう一度参加してください。
+                            Thoth Discord #minecraft_auth チャンネルで
+                            「{code}」
+                            と送信してから、もう一度参加してください。
                         """.trimIndent(),
                     blacklisted = root.optionalString("messages", "blacklisted")
                         ?: """
